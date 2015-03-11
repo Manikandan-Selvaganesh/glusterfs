@@ -42,19 +42,20 @@ gid_resolve (server_conf_t *conf, call_stack_t *root)
 
         ret = getpwuid_r (root->uid, &mypw, mystrs, sizeof(mystrs), &result);
         if (ret != 0) {
-                gf_log("gid-cache", GF_LOG_ERROR, "getpwuid_r(%u) failed",
-                       root->uid);
+                gf_msg ("gid-cache", GF_LOG_ERROR, errno,
+                        PS_MSG_GET_UID_FAILED, "getpwuid_r(%u) failed",
+                        root->uid);
                 return -1;
         }
 
         if (!result) {
-                gf_log ("gid-cache", GF_LOG_ERROR, "getpwuid_r(%u) found "
-                        "nothing", root->uid);
+                gf_msg ("gid-cache", GF_LOG_ERROR, 0, PS_MSG_UID_NOT_FOUND,
+                        "getpwuid_r(%u) found nothing", root->uid);
                 return -1;
         }
 
-        gf_log ("gid-cache", GF_LOG_TRACE, "mapped %u => %s", root->uid,
-                result->pw_name);
+        gf_msg_trace ("gid-cache", 0, "mapped %u => %s", root->uid,
+                      result->pw_name);
 
         ngroups = GF_MAX_AUX_GROUPS;
         ret = getgrouplist (result->pw_name, root->gid, mygroups, &ngroups);
