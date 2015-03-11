@@ -1,4 +1,3 @@
-
 /*
   Copyright (c) 2013 Red Hat, Inc. <http://www.redhat.com>
   This file is part of GlusterFS.
@@ -42,7 +41,7 @@
  */
 
 #define GLFS_TRANSPORT_BASE        GLFS_MSGID_COMP_RPC_TRANSPORT
-#define GLFS_NUM_MESSAGES          84
+#define GLFS_NUM_MESSAGES          92
 #define GLFS_TRANSPORT_MSGID_END   (GLFS_TRANSPORT_BASE + GLFS_NUM_MESSAGES + 1)
 /* Messages with message IDs */
 #define glfs_msg_start_x GLFS_TRANSPORT_BASE, "Invalid: Start of messages"
@@ -217,6 +216,23 @@
 
 #define RDMA_MSG_SEND_CLIENT_ERROR                  (GLFS_TRANSPORT_BASE + 84)
 
+#define RDMA_MSG_ADDR_FAMILY_NOT_SPECIFIED          (GLFS_TRANSPORT_BASE + 85)
+
+#define RDMA_MSG_UNKNOWN_ADDR_FAMILY                (GLFS_TRANSPORT_BASE + 86)
+
+#define RDMA_MSG_REMOTE_HOST_ERROR                  (GLFS_TRANSPORT_BASE + 86)
+
+#define RDMA_MSG_DNS_RESOL_FAILED                   (GLFS_TRANSPORT_BASE + 87)
+
+#define RDMA_MSG_LISTEN_PATH_ERROR                  (GLFS_TRANSPORT_BASE + 88)
+
+#define RDMA_MSG_CONNECT_PATH_ERROR                 (GLFS_TRANSPORT_BASE + 89)
+
+#define RDMA_MSG_GET_ADDR_INFO_FAILED               (GLFS_TRANSPORT_BASE + 90)
+
+#define RDMA_MSG_PORT_BIND_FAILED                   (GLFS_TRANSPORT_BASE + 91)
+
+#define RDMA_MSG_INET_ERROR                         (GLFS_TRANSPORT_BASE + 92)
 /*------------*/
 
 #define TRANSPORT_MSG_END_X GLFS_MSGID_END, "Invalid: End of messages"

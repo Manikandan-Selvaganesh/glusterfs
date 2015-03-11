@@ -22,6 +22,7 @@
 #include "rpc-transport.h"
 #include "rdma.h"
 #include "common-utils.h"
+#include "transport-messages.h"
 
 
 int32_t
@@ -134,7 +135,8 @@ client_fill_address_family (rpc_transport_t *this, struct sockaddr *sockaddr)
 
                 if (!(remote_host_data || connect_path_data) ||
                     (remote_host_data && connect_path_data)) {
-                        gf_log (this->name, GF_LOG_ERROR,
+                        gf_msg (this->name, GF_LOG_ERROR, 0,
+                                RDMA_MSG_ADDR_FAMILY_NOT_SPECIFIED,
                                 "address-family not specified and not able to "
                                 "determine the same from other options "
                                 "(remote-host:%s and connect-path:%s)",
@@ -144,14 +146,13 @@ client_fill_address_family (rpc_transport_t *this, struct sockaddr *sockaddr)
                 }
 
                 if (remote_host_data) {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "address-family not specified, guessing it "
-                                "to be inet/inet6");
+                        gf_msg_debug (this->name, 0, "address-family not "
+                                      "specified, guessing it to be "
+                                      "inet/inet6");
                         sockaddr->sa_family = AF_UNSPEC;
                 } else {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "address-family not specified, guessing it "
-                                "to be unix");
+                        gf_msg_debug (this->name, 0, "address-family not "
+                                      "specified, guessing it to be unix");
                         sockaddr->sa_family = AF_UNIX;
                 }
 
@@ -166,7 +167,8 @@ client_fill_address_family (rpc_transport_t *this, struct sockaddr *sockaddr)
                 } else if (!strcasecmp (address_family, "inet-sdp")) {
                         sockaddr->sa_family = AF_INET_SDP;
                 } else {
-                        gf_log (this->name, GF_LOG_ERROR,
+                        gf_msg (this->name, GF_LOG_ERROR, 0,
+                                RDMA_MSG_UNKNOWN_ADDR_FAMILY,
                                 "unknown address-family (%s) specified",
                                 address_family);
                         sockaddr->sa_family = AF_UNSPEC;
@@ -193,9 +195,9 @@ af_inet_client_get_remote_sockaddr (rpc_transport_t *this,
         remote_host_data = dict_get (options, "remote-host");
         if (remote_host_data == NULL)
         {
-                gf_log (this->name, GF_LOG_ERROR,
-                        "option remote-host missing in volume %s",
-                        this->name);
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        RDMA_MSG_REMOTE_HOST_ERROR, "option remote-host "
+                        "missing in volume %s", this->name);
                 ret = -1;
                 goto err;
         }
@@ -203,9 +205,9 @@ af_inet_client_get_remote_sockaddr (rpc_transport_t *this,
         remote_host = data_to_str (remote_host_data);
         if (remote_host == NULL)
         {
-                gf_log (this->name, GF_LOG_ERROR,
-                        "option remote-host has data NULL in volume %s",
-                        this->name);
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        RDMA_MSG_REMOTE_HOST_ERROR, "option remote-host "
+                        "has data NULL in volume %s", this->name);
                 ret = -1;
                 goto err;
         }
@@ -214,10 +216,9 @@ af_inet_client_get_remote_sockaddr (rpc_transport_t *this,
                 remote_port_data = dict_get (options, "remote-port");
                 if (remote_port_data == NULL)
                 {
-                        gf_log (this->name, GF_LOG_DEBUG,
-                                "option remote-port missing in volume %s. "
-                                "Defaulting to %d",
-                                this->name, GF_DEFAULT_RDMA_LISTEN_PORT);
+                        gf_msg_debug (this->name, 0, "option remote-port "
+                                      "missing in volume %s. Defaulting to %d",
+                                      this->name, GF_DEFAULT_RDMA_LISTEN_PORT);
 
                         remote_port = GF_DEFAULT_RDMA_LISTEN_PORT;
                 }
@@ -229,9 +230,9 @@ af_inet_client_get_remote_sockaddr (rpc_transport_t *this,
 
         if (remote_port == -1)
         {
-                gf_log (this->name, GF_LOG_ERROR,
-                        "option remote-port has invalid port in volume %s",
-                        this->name);
+                gf_msg (this->name, GF_LOG_ERROR, 0, EINVAL,
+                        RDMA_MSG_INVALID_ENTRY, "option remote-port has "
+                        "invalid port in volume %s", this->name);
                 ret = -1;
                 goto err;
         }
@@ -242,7 +243,7 @@ af_inet_client_get_remote_sockaddr (rpc_transport_t *this,
                               sockaddr->sa_family,
                               &this->dnscache, &addr_info);
         if (ret == -1) {
-                gf_log (this->name, GF_LOG_ERROR,
+                gf_msg (this->name, GF_LOG_ERROR, 0, RDMA_MSG_DNS_RESOL_FAILED,
                         "DNS resolution failed on host %s", remote_host);
                 goto err;
         }
@@ -267,32 +268,32 @@ af_unix_client_get_remote_sockaddr (rpc_transport_t *this,
         connect_path_data = dict_get (this->options,
                                       "transport.rdma.connect-path");
         if (!connect_path_data) {
-                gf_log (this->name, GF_LOG_ERROR,
-                        "option transport.rdma.connect-path not "
-                        "specified for address-family unix");
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        RDMA_MSG_CONNECT_PATH_ERROR, "option "
+                        "transport.rdma.connect-path not specified for "
+                        "address-family unix");
                 ret = -1;
                 goto err;
         }
 
         connect_path = data_to_str (connect_path_data);
         if (!connect_path) {
-                gf_log (this->name, GF_LOG_ERROR,
-                        "connect-path is null-string");
+                gf_msg (this->name, GF_LOG_ERROR, EINVAL,
+                        RDMA_MSG_INVALID_ENTRY, "connect-path is null-string");
                 ret = -1;
                 goto err;
         }
 
         if (strlen (connect_path) > UNIX_PATH_MAX) {
-                gf_log (this->name, GF_LOG_ERROR,
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        RDMA_MSG_CONNECT_PATH_ERROR,
                         "connect-path value length %"GF_PRI_SIZET" > "
                         "%d octets", strlen (connect_path), UNIX_PATH_MAX);
                 ret = -1;
                 goto err;
         }
 
-        gf_log (this->name,
-                GF_LOG_DEBUG,
-                "using connect-path %s", connect_path);
+        gf_msg_debug (this->name, 0, "using connect-path %s", connect_path);
         sockaddr_un = (struct sockaddr_un *)sockaddr;
         strcpy (sockaddr_un->sun_path, connect_path);
         *sockaddr_len = sizeof (struct sockaddr_un);
@@ -315,7 +316,8 @@ af_unix_server_get_local_sockaddr (rpc_transport_t *this,
         listen_path_data = dict_get (this->options,
                                      "transport.rdma.listen-path");
         if (!listen_path_data) {
-                gf_log (this->name, GF_LOG_ERROR,
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        RDMA_MSG_LISTEN_PATH_ERROR,
                         "missing option listen-path");
                 ret = -1;
                 goto err;
@@ -328,8 +330,9 @@ af_unix_server_get_local_sockaddr (rpc_transport_t *this,
 #endif
 
         if (strlen (listen_path) > UNIX_PATH_MAX) {
-                gf_log (this->name, GF_LOG_ERROR,
-                        "option listen-path has value length %"GF_PRI_SIZET" > %d",
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        RDMA_MSG_LISTEN_PATH_ERROR, "option listen-path has "
+                        "value length %"GF_PRI_SIZET" > %d",
                         strlen (listen_path), UNIX_PATH_MAX);
                 ret = -1;
                 goto err;
@@ -399,7 +402,8 @@ af_inet_server_get_local_sockaddr (rpc_transport_t *this,
 
         ret = getaddrinfo(listen_host, service, &hints, &res);
         if (ret != 0) {
-                gf_log (this->name, GF_LOG_ERROR,
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        RDMA_MSG_GET_ADDR_INFO_FAILED,
                         "getaddrinfo failed for host %s, service %s (%s)",
                         listen_host, service, gai_strerror (ret));
                 ret = -1;
@@ -433,7 +437,8 @@ gf_rdma_client_bind (rpc_transport_t *this, struct sockaddr *sockaddr,
                                                        *sockaddr_len,
                                                        GF_CLIENT_PORT_CEILING);
                 if (ret == -1) {
-                        gf_log (this->name, GF_LOG_WARNING,
+                        gf_msg (this->name, GF_LOG_WARNING, 0,
+                                RDMA_MSG_PORT_BIND_FAILED,
                                 "cannot bind rdma_cm_id to port "
                                 "less than %d (%s)", GF_CLIENT_PORT_CEILING,
                                 strerror (errno));
@@ -457,7 +462,8 @@ gf_rdma_client_bind (rpc_transport_t *this, struct sockaddr *sockaddr,
                 break;
 
         default:
-                gf_log (this->name, GF_LOG_ERROR,
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        RDMA_MSG_UNKNOWN_ADDR_FAMILY,
                         "unknown address family %d", sockaddr->sa_family);
                 ret = -1;
                 break;
@@ -508,7 +514,8 @@ gf_rdma_client_get_remote_sockaddr (rpc_transport_t *this,
                 break;
 
         default:
-                gf_log (this->name, GF_LOG_ERROR,
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        RDMA_MSG_UNKNOWN_ADDR_FAMILY,
                         "unknown address-family %d", sockaddr->sa_family);
                 ret = -1;
         }
@@ -541,17 +548,16 @@ gf_rdma_server_get_local_sockaddr (rpc_transport_t *this,
                 } else if (!strcasecmp (address_family, "unix")) {
                         addr->sa_family = AF_UNIX;
                 } else {
-                        gf_log (this->name, GF_LOG_ERROR,
-                                "unknown address family (%s) specified",
-                                address_family);
+                        gf_msg (this->name, GF_LOG_ERROR, 0,
+                                RDMA_MSG_UNKNOWN_ADDR_FAMILY, "unknown address"
+                                " family (%s) specified", address_family);
                         addr->sa_family = AF_UNSPEC;
                         ret = -1;
                         goto err;
                 }
         } else {
-                gf_log (this->name, GF_LOG_DEBUG,
-                        "option address-family not specified, defaulting "
-                        "to inet");
+                gf_msg_debug (this->name, 0, "option address-family not "
+                              "specified, defaulting to inet");
                 addr->sa_family = AF_INET;
         }
 
@@ -639,8 +645,8 @@ fill_inet6_inet_identifiers (rpc_transport_t *this, struct sockaddr_storage *add
                            service, sizeof (service),
                            NI_NUMERICHOST | NI_NUMERICSERV);
         if (ret != 0) {
-                gf_log (this->name,
-                        GF_LOG_ERROR,
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        RDMA_MSG_GET_NAME_INFO_FAILED,
                         "getnameinfo failed (%s)", gai_strerror (ret));
         }
 
@@ -669,7 +675,8 @@ gf_rdma_get_transport_identifiers (rpc_transport_t *this)
                                                    this->myinfo.sockaddr_len,
                                                    this->myinfo.identifier);
                 if (ret == -1) {
-                        gf_log (this->name, GF_LOG_ERROR,
+                        gf_msg (this->name, GF_LOG_ERROR, 0,
+                                RDMA_MSG_INET_ERROR,
                                 "can't fill inet/inet6 identifier for server");
                         goto err;
                 }
@@ -679,7 +686,8 @@ gf_rdma_get_transport_identifiers (rpc_transport_t *this)
                                                    this->peerinfo.sockaddr_len,
                                                    this->peerinfo.identifier);
                 if (ret == -1) {
-                        gf_log (this->name, GF_LOG_ERROR,
+                        gf_msg (this->name, GF_LOG_ERROR, 0,
+                                RDMA_MSG_INET_ERROR,
                                 "can't fill inet/inet6 identifier for client");
                         goto err;
                 }
@@ -703,7 +711,8 @@ gf_rdma_get_transport_identifiers (rpc_transport_t *this)
         break;
 
         default:
-                gf_log (this->name, GF_LOG_ERROR,
+                gf_msg (this->name, GF_LOG_ERROR, 0,
+                        RDMA_MSG_UNKNOWN_ADDR_FAMILY,
                         "unknown address family (%d)",
                         ((struct sockaddr *) &this->myinfo.sockaddr)->sa_family);
                 ret = -1;
